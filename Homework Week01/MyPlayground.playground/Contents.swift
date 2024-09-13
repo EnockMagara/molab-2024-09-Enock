@@ -1,65 +1,35 @@
-import SwiftUI
-import PlaygroundSupport
+import Foundation
 
-// Define the data model for a to-do item
-struct TodoItem: Identifiable, Codable {
-    var id: UUID = UUID()
-    var title: String
-    var isCompleted: Bool = false
-}
+// Function to start the guessing game
+func startGuessingGame() {
+    let randomNumber = Int.random(in: 1...100)  // Random number between 1 and 100
+    var isGuessedCorrectly = false
+    let maxAttempts = 5  // Maximum number of attempts allowed
 
-// ViewModel to manage the to-do list
-class TodoViewModel: ObservableObject {
-    @Published var items: [TodoItem] = []  // This array will store all to-do items.
+    print("Guess the number between 1 and 100. You have \(maxAttempts) attempts.")
 
-    func addItem(title: String) {
-        let newItem = TodoItem(title: title)
-        items.append(newItem)
-    }
-
-    func deleteItem(indexSet: IndexSet) {
-        items.remove(atOffsets: indexSet)
-    }
-
-    func toggleIsCompleted(item: TodoItem) {
-        if let index = items.firstIndex(where: { $0.id == item.id }) {
-            items[index].isCompleted.toggle()
+    for attempt in 1...maxAttempts {
+        print("Attempt \(attempt): Enter your guess:")
+        
+        // Simulating user input in Playground (replace this with actual user input in a real app)
+        let userGuess = Int.random(in: 1...100)  // Random guess for demonstration
+        print("You guessed: \(userGuess)")
+        
+        if userGuess == randomNumber {
+            print("Congratulations! You guessed the right number: \(randomNumber)")
+            isGuessedCorrectly = true
+            break
+        } else if userGuess < randomNumber {
+            print("Your guess is too low.")
+        } else {
+            print("Your guess is too high.")
         }
     }
-}
-
-// Main ContentView that displays the to-do list
-struct ContentView: View {
-    @StateObject var viewModel = TodoViewModel()
-
-    var body: some View {
-        NavigationView {
-            List {
-                ForEach(viewModel.items) { item in
-                    HStack {
-                        Text(item.title)
-                            .strikethrough(item.isCompleted, color: .gray)
-                        Spacer()
-                        Button(action: {
-                            viewModel.toggleIsCompleted(item: item)
-                        }) {
-                            Image(systemName: item.isCompleted ? "checkmark.square" : "square")
-                        }
-                    }
-                }
-                .onDelete(perform: viewModel.deleteItem)
-            }
-            .navigationTitle("To-Do List")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Add Item") {
-                        viewModel.addItem(title: "New Item")
-                    }
-                }
-            }
-        }
+    
+    if !isGuessedCorrectly {
+        print("Sorry, you've used all your attempts. The correct number was \(randomNumber).")
     }
 }
 
-// Set up the live preview
-PlaygroundPage.current.setLiveView(ContentView())
+// Start the game
+startGuessingGame()
