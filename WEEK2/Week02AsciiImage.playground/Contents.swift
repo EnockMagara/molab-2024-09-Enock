@@ -1,3 +1,9 @@
+
+//Here is the reference to the Youtube tutorial :
+// https://www.youtube.com/watch?v=X3wxs3iQVek
+// A useful textbook I used is iOS 15 Programming Fundamentals with Swift by Matt Neuburg.
+
+
 import Foundation
 
 // Function to load an ASCII art file
