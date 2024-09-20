@@ -1,5 +1,13 @@
 import Foundation
 
+// Function to load an ASCII art file
+func load(_ file: String) -> String {
+    guard let path = Bundle.main.path(forResource: file, ofType: nil) else {
+        return "File not found!"
+    }
+    return (try? String(contentsOfFile: path, encoding: .utf8)) ?? "Error loading file!"
+}
+
 // AnimalType enum to represent different types of animals
 enum AnimalType: String {
     case dog = "Dog"
@@ -31,11 +39,11 @@ class AnimalClass: Animal {
     var asciiArt: String
     
     // Initializer for the class
-    init(name: String, type: AnimalType, properties: AnimalProperties, asciiArt: String) {
+    init(name: String, type: AnimalType, properties: AnimalProperties, asciiArtFile: String) {
         self.name = name
         self.type = type
         self.properties = properties
-        self.asciiArt = asciiArt
+        self.asciiArt = load(asciiArtFile) // Load ASCII art from file
     }
     
     // Method to make sound based on animal type
@@ -70,31 +78,13 @@ func filterAnimals<T: Animal>(animals: [T], byType type: AnimalType) -> [T] {
 
 // Example usage
 let dogProperties = AnimalProperties(age: 5, weight: 20.0)
-let dogArt = """
-  / \\__
- (    @\\___
- /         O
-/   (_____/
-/_____/   U
-"""
-let myDog = AnimalClass(name: "Buddy", type: .dog, properties: dogProperties, asciiArt: dogArt)
+let myDog = AnimalClass(name: "Buddy", type: .dog, properties: dogProperties, asciiArtFile: "dog.txt")
 
 let catProperties = AnimalProperties(age: 1, weight: 5.0)
-let catArt = """
-  /\\_/\\  
- ( o.o ) 
- > ^ <  
-"""
-let myCat = AnimalClass(name: "Whiskers", type: .cat, properties: catProperties, asciiArt: catArt)
+let myCat = AnimalClass(name: "Whiskers", type: .cat, properties: catProperties, asciiArtFile: "cat.txt")
 
 let birdProperties = AnimalProperties(age: 3, weight: 0.5)
-let birdArt = """
-  \\
- (o>
- //\\
- V_/_ 
-"""
-let myBird = AnimalClass(name: "Tweety", type: .bird, properties: birdProperties, asciiArt: birdArt)
+let myBird = AnimalClass(name: "Tweety", type: .bird, properties: birdProperties, asciiArtFile: "bird.txt")
 
 // Create an array of animals
 let animals: [AnimalClass] = [myDog, myCat, myBird]
