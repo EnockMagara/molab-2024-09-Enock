@@ -1,1 +1,34 @@
-     .DS_Store
+# Xcode
+*.xcworkspace
+*.xcuserdata
+*.xcodeproj/project.xcworkspace
+*.xcodeproj/xcuserdata
+*.xcodeproj/xcshareddata/xcschemes/xcschememanagement.plist
+
+# Swift Package Manager
+.build/
+Package.resolved
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+
+# Archives
+*.xcarchive
+
+# Derived Data
+DerivedData/
+
+# Other
+*.moved-aside
+*.xcuserstate
+*.swp
+*.lock
+.DS_Store
