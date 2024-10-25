@@ -105,7 +105,7 @@ struct ContentView: View {
                 }
             }
             .padding([.horizontal, .bottom])
-            .navigationTitle("Instafilter")
+            .navigationTitle("PhotoResizer")
         }
     }
 
