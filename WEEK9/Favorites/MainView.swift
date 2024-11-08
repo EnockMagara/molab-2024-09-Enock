@@ -11,7 +11,7 @@ struct MainView: View {
         NavigationView {
             VStack {
                 if isListView {
-                    ListView() // Show list view if isListView is true
+                    ListView(isListView: $isListView) // Pass binding to toggle views
                 } else {
                     MapView() // Show map view if isListView is false
                 }
@@ -53,6 +53,10 @@ struct MapView: View {
                             .frame(width: 44, height: 44)
                             .background(.white)
                             .clipShape(Circle())
+                            .onTapGesture {
+                                appModel.selectedPlace = location
+                                showingDetail = true // Show detail view
+                            }
                     }
                     Text(location.name)
                         .fixedSize()
@@ -90,8 +94,11 @@ struct MapView: View {
                 }
                 .padding()
                 Button("Add Location") {
-                    appModel.addLocation(name: newLocationName, coordinate: newCoordinate, note: newLocationNote, image: newImage) // Add new location
+                    appModel.addLocation(name: newLocationName, coordinate: newCoordinate, note: newLocationNote, image: newImage)
                     showingInput = false // Dismiss the input prompt
+                    newImage = nil
+                    newLocationName = ""
+                    newLocationNote = ""
                 }
                 .padding()
             }
@@ -133,6 +140,7 @@ struct MapView: View {
 
 struct ListView: View {
     @EnvironmentObject var appModel: AppModel // Access the app model
+    @Binding var isListView: Bool // Binding to toggle state
 
     var body: some View {
         List {
@@ -147,6 +155,8 @@ struct ListView: View {
                 }
                 .onTapGesture {
                     appModel.selectedPlace = location // Set selected place on tap
+                    appModel.mapRegion.center = location.coordinate // Center map on location
+                    isListView = false // Switch to map view
                 }
             }
             .onDelete { indices in
@@ -161,9 +171,9 @@ struct ToggleViewButton: View {
 
     var body: some View {
         Button(action: {
-            isListView = false // Always switch to map view
+            isListView.toggle() // Toggle between map and list views
         }) {
-            Text("Show Map") // Change button text
+            Text(isListView ? "Show Map" : "Show List") // Change button text
                 .padding()
                 .background(.blue)
                 .foregroundColor(.white)
