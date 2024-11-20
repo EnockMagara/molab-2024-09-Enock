@@ -8,10 +8,13 @@
 import SwiftUI
 
 @main
-struct communityMapsApp: App {
+struct communityMapsAppApp: App {
+    @StateObject private var appModel = AppModel()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainView()
+                .environmentObject(appModel)
         }
     }
 }
