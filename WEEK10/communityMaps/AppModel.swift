@@ -14,6 +14,8 @@ class AppModel: ObservableObject {
     
     @Published var selectedPlace: Location? // Optional to store selected location
 
+    @Published var showingProfile: Bool = false // State to track Profile view visibility
+
     // Method to remove a location
     func removeLocation(at offsets: IndexSet) {
         locations.remove(atOffsets: offsets)
