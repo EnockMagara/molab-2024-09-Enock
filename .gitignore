@@ -68,7 +68,7 @@ fastlane/test_output
 
 # temporary files which can be created if a process still has a handle open of a deleted file
 .fuse_hidden*
-
+WEEK10/communityMaps/GoogleService-Info.plist
 # KDE directory preferences
 .directory
 
