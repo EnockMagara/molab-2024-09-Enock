@@ -10,9 +10,12 @@ import SwiftUI
 
 @main
 struct FavoritesApp: App {
+    @StateObject private var appModel = AppModel()
+
     var body: some Scene {
         WindowGroup {
             MainView()
+                .environmentObject(appModel)
         }
     }
 }

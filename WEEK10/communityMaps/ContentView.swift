@@ -6,17 +6,23 @@ import MapKit
 struct MainView: View {
     @StateObject private var appModel = AppModel() // Initialize the app model
     @State private var showAddEventView = false // State to control navigation
-
+    @State private var selectedLocation: CLLocationCoordinate2D? // State for selected location
+    @State private var navigateToMap = false // State to control navigation
+    @State private var selectedImage: PhotosPickerItem? // State for the selected image item
+    @State private var showImagePicker = false // State to control image picker
+    @State private var selectedImageData: Data? // State for the selected image data
+    @State private var selectedTab = 0
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             NavigationView {
-                MapView()
+                MapView(selectedLocation: $selectedLocation, navigateToMap: $navigateToMap) // Pass bindings
                     .navigationTitle("Maps") // Set the title for this tab
             }
             .tabItem {
                 Image(systemName: "map")
                 Text("Maps")
             }
+            .tag(0)
             
             NavigationView {
                 ProfileView()
@@ -26,6 +32,7 @@ struct MainView: View {
                 Image(systemName: "person")
                 Text("Profile")
             }
+            .tag(1)
             
             NavigationView {
                 EventsView()
@@ -35,26 +42,29 @@ struct MainView: View {
                 Image(systemName: "calendar")
                 Text("Events")
             }
+            .tag(2)
             
             NavigationView {
-                StarredListView()
+                StarredListView(selectedTab: $selectedTab, selectedLocation: $selectedLocation)
                     .navigationTitle("Starred") // Set the title for this tab
             }
             .tabItem {
                 Image(systemName: "star")
                 Text("Starred")
             }
+            .tag(3)
         }
         .environmentObject(appModel) // Provide the app model to subviews
         .frame(maxHeight: .infinity) // Allow TabView to take available space
 
         Button(action: {
-            showAddEventView = true // Trigger navigation
+            shareStarredList(appModel: appModel) 
         }) {
-            Text("Add Event")
+            Text("Share Starred List")
         }
         .sheet(isPresented: $showAddEventView) {
             AddEventView()
+                .environmentObject(appModel) // Inject appModel into AddEventView
         }
     }
 }
@@ -127,125 +137,198 @@ struct ProfileView_Previews: PreviewProvider {
 }
 
 struct EventsView: View {
+    @EnvironmentObject var appModel: AppModel // Access the app model
+
     var body: some View {
-        Text("Events View") // Display text for Events
+        List(appModel.events) { event in
+            VStack(alignment: .leading) {
+                Text(event.name) // Display event name
+                    .font(.headline)
+                Text(event.description) // Display event description
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                Text("Date: \(event.date, formatter: dateFormatter)") // Display event date
+                    .font(.subheadline)
+                Text("Address: \(event.address)") // Display event address
+                    .font(.subheadline)
+            }
+            .padding()
+        }
+        .navigationTitle("Events") // Set the title for the navigation view
     }
 }
 
+// Date formatter for displaying event dates
+private let dateFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateStyle = .medium
+    return formatter
+}()
+
 struct StarredListView: View {
+    @EnvironmentObject var appModel: AppModel
+    @Binding var selectedTab: Int // Binding to change the tab
+    @Binding var selectedLocation: CLLocationCoordinate2D? // Binding for selected location
+    @State private var navigateToMap = false // State to control navigation
+
     var body: some View {
-        Text("Starred List View") // Display text for Starred List
+        List(appModel.starredLocations, id: \.id) { location in
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Tag: \(location.tag)")
+                Text("Description: \(location.description ?? "No description")")
+                Text("Lat: \(location.latitude), Lon: \(location.longitude)")
+                
+                if let imageData = location.imageData, let uiImage = UIImage(data: imageData) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 100)
+                        .padding(.vertical, 5)
+                }
+                
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        selectedLocation = CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
+                        selectedTab = 0
+                        navigateToMap = true
+                    }) {
+                        Image(systemName: "arrow.right.circle")
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
+            .padding()
+        }
+        .navigationTitle("Starred Locations")
+        .background(
+            NavigationLink(
+                destination: MapView(selectedLocation: $selectedLocation, navigateToMap: $navigateToMap),
+                isActive: $navigateToMap
+            ) {
+                EmptyView()
+            }
+        )
     }
 }
 
 struct MapView: View {
-    @EnvironmentObject var appModel: AppModel // Access the app model
-    @State private var showingInput = false // State to show input prompt
-    @State private var newLocationName = "" // State for new location name
-    @State private var newLocationNote = "" // State for new location note
-    @State private var newCoordinate = CLLocationCoordinate2D() // State for new location coordinate
-    @State private var selectedPhotoItem: PhotosPickerItem? // State for selected photo item
-    @State private var newImage: UIImage? // State for new location image
-    @State private var showingDetail = false // State to show detail view
-    @State private var showingAddEventView = false
+    @EnvironmentObject var appModel: AppModel
+    @StateObject var locationManager = LocationManager()
+    @Binding var selectedLocation: CLLocationCoordinate2D?
+    @Binding var navigateToMap: Bool
+
+    @State private var showAlert = false // State to control alert
+    @State private var tag: String = "" // State for the tag
+    @State private var description: String = "" // State for the description
+    @State private var selectedImage: PhotosPickerItem? // State for the selected image item
+    @State private var showImagePicker = false // State to control image picker
+    @State private var selectedImageData: Data? // State for the selected image data
 
     var body: some View {
-        NavigationView {
-            ZStack {
-                // Map view
-                Map(coordinateRegion: $appModel.mapRegion, annotationItems: appModel.locations) { location in
-                    MapAnnotation(coordinate: location.coordinate) {
-                        VStack {
-                            if let image = location.image {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .frame(width: 44, height: 44)
-                                    .clipShape(Circle())
-                                    .onTapGesture {
-                                        appModel.selectedPlace = location
-                                        showingAddEventView = true // Show detail view
-                                    }
-                            } else {
-                                Image(systemName: "star.circle")
-                                    .resizable()
-                                    .foregroundColor(.red)
-                                    .frame(width: 44, height: 44)
-                                    .background(.white)
-                                    .clipShape(Circle())
-                                    .onTapGesture {
-                                        appModel.selectedPlace = location
-                                        showingAddEventView = true // Show detail view
-                                    }
-                            }
-                            Text(location.name)
-                                .fixedSize()
-                        }
+        ZStack {
+            Map(coordinateRegion: $locationManager.region, annotationItems: appModel.starredLocations) { location in
+                MapAnnotation(coordinate: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)) {
+                    Button(action: {
+                        // Show modal with image
+                    }) {
+                        Image(systemName: "star.fill")
+                            .foregroundColor(.yellow)
                     }
-                }
-                .ignoresSafeArea() // Extend map to safe area
-
-                // Overlay for search and buttons
-                VStack {
-                    HStack {
-                        // Search field
-                        TextField("Search for maps or events...", text: .constant(""))
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .padding(.horizontal)
-
-                        // Profile icon
-                        Button(action: {
-                            appModel.showingProfile = true // Set state to show Profile view
-                        }) {
-                            Image(systemName: "person.circle")
-                                .resizable()
-                                .frame(width: 30, height: 30)
-                                .padding()
-                        }
-                    }
-                    .padding()
-
-                    // Buttons below the search bar
-                    HStack {
-                        // Create Map button
-                        Button(action: {
-                            // Action for Create Map
-                        }) {
-                            Label("Create Map", systemImage: "map")
-                                .padding()
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(8)
-                        }
-                        .padding()
-
-                        Spacer()
-
-                        // Add Event button
-                        Button(action: {
-                            showingAddEventView = true // Trigger sheet presentation
-                        }) {
-                            Label("Add Event", systemImage: "calendar")
-                                .padding()
-                                .background(Color.green)
-                                .foregroundColor(.white)
-                                .cornerRadius(8)
-                        }
-                        .padding()
-                        .sheet(isPresented: $showingAddEventView) {
-                            AddEventView()
-                        }
-                    }
-                    .padding(.horizontal)
-
-                    Spacer()
-                }
-
-                // Navigation link to ProfileView
-                NavigationLink(destination: ProfileView(), isActive: $appModel.showingProfile) {
-                    EmptyView()
                 }
             }
+            .onAppear {
+                if let newLocation = selectedLocation {
+                    locationManager.region.center = newLocation // Center map on new location
+                }
+            }
+            .gesture(
+                TapGesture()
+                    .onEnded { _ in
+                        let center = locationManager.region.center
+                        selectedLocation = center
+                        selectedImageData = nil // Reset image data
+                        showAlert = true // Show alert when location is selected
+                    }
+            )
+            .alert("Star the Location?", isPresented: $showAlert) {
+                TextField("Enter a tag", text: $tag) // Input for tag
+                TextField("Enter a description", text: $description) // Input for description
+                Button("Star") {
+                    if let location = selectedLocation {
+                        appModel.starLocation(
+                            latitude: location.latitude,
+                            longitude: location.longitude,
+                            tag: tag,
+                            description: description, // Pass the description
+                            imageData: selectedImageData // Pass the image data
+                        )
+                    }
+                }
+                Button(selectedImageData == nil ? "Share Image" : "Image Selected") {
+                    showImagePicker = true // Show image picker
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Enter a tag and description for this location. Do you want to share an image of the location?")
+            }
+            .sheet(isPresented: $showImagePicker, onDismiss: {
+                showAlert = true // Reopen the alert after image picker is dismissed
+            }) {
+                PhotosPicker(selection: $selectedImage, matching: .images) {
+                    Text("Select an Image")
+                }
+                .onChange(of: selectedImage) { newItem in
+                    if let newItem = newItem {
+                        Task {
+                            if let data = try? await newItem.loadTransferable(type: Data.self) {
+                                selectedImageData = data // Store the image data
+                                showImagePicker = false // Close the image picker
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
+    func centerUserLocationAction() {
+        withAnimation {
+            locationManager.centerUserLocation()
+        }
+    }
+
+    func getAddressFromCoordinates(latitude: Double, longitude: Double, completion: @escaping (String?) -> Void) {
+        let geocoder = CLGeocoder()
+        let location = CLLocation(latitude: latitude, longitude: longitude)
+        
+        geocoder.reverseGeocodeLocation(location) { placemarks, error in
+            if let error = error {
+                print("Error in reverse geocoding: \(error.localizedDescription)")
+                completion(nil)
+                return
+            }
+            
+            if let placemark = placemarks?.first {
+                var addressString = ""
+                
+                if let name = placemark.name {
+                    addressString += name + ", "
+                }
+                if let locality = placemark.locality {
+                    addressString += locality + ", "
+                }
+                if let administrativeArea = placemark.administrativeArea {
+                    addressString += administrativeArea + ", "
+                }
+                if let country = placemark.country {
+                    addressString += country
+                }
+                
+                completion(addressString)
+            } else {
+                completion(nil)
+            }
         }
     }
 }
@@ -256,18 +339,21 @@ struct ListView: View {
 
     var body: some View {
         List {
-            ForEach(appModel.locations) { location in
+            ForEach(appModel.locations.indices, id: \.self) { index in
                 VStack(alignment: .leading) {
-                    Text(location.name) // Display location name
-                    if let note = location.note {
+                    Text(appModel.locations[index].name) // Display location name
+                    if let note = appModel.locations[index].description {
                         Text(note) // Display location note if available
                             .font(.subheadline)
                             .foregroundColor(.gray)
                     }
                 }
                 .onTapGesture {
-                    appModel.selectedPlace = location // Set selected place on tap
-                    appModel.mapRegion.center = location.coordinate // Center map on location
+                    appModel.selectedPlace = appModel.locations[index] // Set selected place on tap
+                    appModel.mapRegion.center = CLLocationCoordinate2D(
+                        latitude: appModel.locations[index].latitude,
+                        longitude: appModel.locations[index].longitude
+                    ) // Center map on location
                     isListView = false // Switch to map view
                 }
             }
@@ -282,6 +368,7 @@ struct ToggleViewButton: View {
     @Binding var isListView: Bool // Binding to toggle state
 
     var body: some View {
+        
         Button(action: {
             isListView.toggle() // Toggle between map and list views
         }) {
@@ -295,48 +382,94 @@ struct ToggleViewButton: View {
 }
 
 struct AddEventView: View {
-    @State private var eventName: String = "" // State for event name
-    @State private var eventDescription: String = "" // State for event description
-    @State private var eventDate: Date = Date() // State for event date
-    @State private var eventAddress: String = "" // State for event address
+    @EnvironmentObject var appModel: AppModel
+    @Environment(\.presentationMode) var presentationMode
+
+    @State private var eventName: String = ""
+    @State private var eventDescription: String = ""
+    @State private var eventDate: Date = Date()
+    @State private var eventAddress: String = ""
+    @State private var selectFromMap: Bool = false
+    @State private var navigateToMap = false
+    @State private var selectedLocation: CLLocationCoordinate2D? // Store selected location
 
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Event Details")) {
-                    TextField("Event Name", text: $eventName) // Input for event name
-                    TextField("Description", text: $eventDescription) // Input for event description
-                    DatePicker("Date", selection: $eventDate, displayedComponents: .date) // Date picker for event date
+                    TextField("Event Name", text: $eventName)
+                    TextField("Description", text: $eventDescription)
+                    DatePicker("Date", selection: $eventDate, displayedComponents: .date)
                 }
                 
                 Section(header: Text("Location")) {
-                    TextField("Address", text: $eventAddress) // Input for event address
+                    Toggle("Select from Map", isOn: $selectFromMap)
+                    if selectFromMap {
+                        Button("Choose Location on Map") {
+                            navigateToMap = true
+                        }
+                    } else {
+                        TextField("Address", text: $eventAddress)
+                    }
                 }
                 
                 Button(action: {
-                    print("Save Event button tapped") // Debug print
                     saveEvent()
                 }) {
                     Text("Save Event")
                         .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
-            .navigationTitle("Add Event") // Title of the navigation view
-            .onAppear {
-                print("AddEventView appeared") // Debug print
-            }
+            .navigationTitle("Add Event")
+            .background(
+                NavigationLink(
+                    destination: MapView(selectedLocation: $selectedLocation, navigateToMap: $navigateToMap),
+                    isActive: $navigateToMap
+                ) {
+                    EmptyView()
+                }
+            )
         }
     }
     
     func saveEvent() {
-        // Logic to save the event
-        print("Event Saved: \(eventName), \(eventDescription), \(eventDate), \(eventAddress)") // Debug print
+        // Use selectedLocation if available, otherwise use eventAddress
+        let address = selectFromMap && selectedLocation != nil ? "Lat: \(selectedLocation!.latitude), Lon: \(selectedLocation!.longitude)" : eventAddress
+        
+        appModel.addEvent(name: eventName, description: eventDescription, date: eventDate, address: address)
+        presentationMode.wrappedValue.dismiss()
     }
 }
 
 struct AddEventView_Previews: PreviewProvider {
     static var previews: some View {
         AddEventView()
+            .environmentObject(AppModel()) // Inject appModel for preview
+    }
+}
+
+func shareStarredList(appModel: AppModel) {
+    var itemsToShare: [Any] = []
+    
+    for location in appModel.starredLocations {
+        let locationInfo = """
+        Tag: \(location.tag)
+        Note: \(location.description ?? "No description")
+        Coordinates: Lat \(location.latitude), Lon \(location.longitude)
+        """
+        
+        itemsToShare.append(locationInfo)
+        
+        if let imageData = location.imageData, let image = UIImage(data: imageData) {
+            itemsToShare.append(image) // Add image to share items
+        }
+    }
+    
+    let activityController = UIActivityViewController(activityItems: itemsToShare, applicationActivities: nil)
+    
+    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+       let rootViewController = windowScene.windows.first?.rootViewController {
+        rootViewController.present(activityController, animated: true, completion: nil)
     }
 }
 

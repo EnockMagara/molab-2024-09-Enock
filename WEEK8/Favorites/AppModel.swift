@@ -25,6 +25,12 @@ class AppModel: ObservableObject {
     func removeLocation(at offsets: IndexSet) {
         locations.remove(atOffsets: offsets)
     }
+
+    // Method to add a new location
+    func addLocation(name: String, coordinate: CLLocationCoordinate2D, note: String?, image: UIImage?) {
+        let newLocation = Location(name: name, coordinate: coordinate, note: note, image: image)
+        locations.append(newLocation) // Add the new location to the list
+    }
 }
 
 // Example Location struct
@@ -32,5 +38,7 @@ struct Location: Identifiable {
     let id = UUID() // Unique identifier
     let name: String // Name of the location
     let coordinate: CLLocationCoordinate2D // Coordinate of the location
+    var note: String? // Optional note for the location
+    var image: UIImage? // Optional image for the location
 }
 
