@@ -7,6 +7,9 @@
 
 import SwiftUI
 import FirebaseCore
+import Firebase
+import UIKit
+import GoogleSignIn
 
 @main
 struct communityMapsAppApp: App {
@@ -27,5 +30,9 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         FirebaseApp.configure()
         return true
+    }
+
+    func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey : Any] = [:]) -> Bool {
+        return GIDSignIn.sharedInstance.handle(url)
     }
 }

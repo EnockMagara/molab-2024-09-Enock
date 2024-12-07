@@ -2,6 +2,9 @@ import SwiftUI
 import PhotosUI
 import CoreLocation
 import MapKit
+import GoogleSignIn
+import GoogleSignInSwift
+import UIKit
 
 struct MainView: View {
     @StateObject private var appModel = AppModel() // Initialize the app model
@@ -35,33 +38,23 @@ struct MainView: View {
             .tag(1)
             
             NavigationView {
-                EventsView()
-                    .navigationTitle("Events") // Set the title for this tab
-            }
-            .tabItem {
-                Image(systemName: "calendar")
-                Text("Events")
-            }
-            .tag(2)
-            
-            NavigationView {
                 StarredListView(selectedTab: $selectedTab, selectedLocation: $selectedLocation)
                     .navigationTitle("Starred") // Set the title for this tab
+                    .navigationBarItems(trailing: Button(action: {
+                        shareStarredList(appModel: appModel) // Share starred events
+                    }) {
+                        Text("Share Starred")
+                    })
             }
             .tabItem {
                 Image(systemName: "star")
                 Text("Starred")
             }
-            .tag(3)
+            .tag(2) // Update tag to 2
         }
         .environmentObject(appModel) // Provide the app model to subviews
         .frame(maxHeight: .infinity) // Allow TabView to take available space
 
-        Button(action: {
-            shareStarredList(appModel: appModel) 
-        }) {
-            Text("Share Starred List")
-        }
         .sheet(isPresented: $showAddEventView) {
             AddEventView()
                 .environmentObject(appModel) // Inject appModel into AddEventView
@@ -74,33 +67,50 @@ struct ProfileView: View {
     @State private var isEditing = false // State to control edit mode
     @State private var username = "John Doe" // Example username
     @State private var bio = "Loves hiking and photography." // Example bio
+    @State private var googleSignInResult: GoogleSignInResult? // Store Google Sign-In result
+    @State private var showSignInError = false // State to show sign-in error
 
     var body: some View {
         VStack {
             // Profile Information
             VStack(alignment: .leading, spacing: 10) {
-                Text("Username: \(username)")
-                    .font(.headline)
-                
-                Text("Bio: \(bio)")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
+                if let result = googleSignInResult {
+                    Text("Username: \(result.displayName ?? "Unknown")")
+                        .font(.headline)
+                    Text("Email: \(result.email ?? "No email")")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                } else {
+                    Text("Username: \(username)")
+                        .font(.headline)
+                    Text("Bio: \(bio)")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                }
             }
             .padding()
 
-            // Edit Profile Button
+            // Google Sign-In Button
             Button(action: {
-                isEditing.toggle() // Toggle edit mode
-                print("Edit Profile button tapped") // Debug print
+                Task {
+                    do {
+                        let helper = SignInWithGoogleHelper(GIDClientID: "230807118556-seejp6ota1q96kmmf9fi8qq6il6n1492.apps.googleusercontent.com")
+                        googleSignInResult = try await helper.signIn()
+                    } catch {
+                        showSignInError = true
+                    }
+                }
             }) {
-                Text("Edit Profile")
+                Text(googleSignInResult == nil ? "Sign in with Google" : "Sign out")
                     .padding()
                     .background(Color.blue)
                     .foregroundColor(.white)
                     .cornerRadius(8)
             }
-            .sheet(isPresented: $isEditing) {
-                EditProfileView(username: $username, bio: $bio)
+            .alert("Sign-In Error", isPresented: $showSignInError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Failed to sign in with Google.")
             }
 
             Spacer()
@@ -174,9 +184,10 @@ struct StarredListView: View {
     var body: some View {
         List(appModel.starredLocations, id: \.id) { location in
             VStack(alignment: .leading, spacing: 10) {
-                Text("Tag: \(location.tag)")
-                Text("Description: \(location.description ?? "No description")")
-                Text("Lat: \(location.latitude), Lon: \(location.longitude)")
+                Text("Tag: \(location.tag)") // Display tag
+                Text("Address: \(location.address)") // Display address separately
+                Text("Description: \(location.description ?? "No description")") // Display description
+                Text("Lat: \(location.latitude), Lon: \(location.longitude)") // Display coordinates
                 
                 if let imageData = location.imageData, let uiImage = UIImage(data: imageData) {
                     Image(uiImage: uiImage)
@@ -218,12 +229,12 @@ struct MapView: View {
     @Binding var selectedLocation: CLLocationCoordinate2D?
     @Binding var navigateToMap: Bool
 
-    @State private var showAlert = false // State to control alert
-    @State private var tag: String = "" // State for the tag
-    @State private var description: String = "" // State for the description
-    @State private var selectedImage: PhotosPickerItem? // State for the selected image item
-    @State private var showImagePicker = false // State to control image picker
-    @State private var selectedImageData: Data? // State for the selected image data
+    @State private var showAlert = false
+    @State private var tag: String = ""
+    @State private var description: String = ""
+    @State private var selectedImage: PhotosPickerItem?
+    @State private var showImagePicker = false
+    @State private var selectedImageData: Data?
 
     var body: some View {
         ZStack {
@@ -239,7 +250,7 @@ struct MapView: View {
             }
             .onAppear {
                 if let newLocation = selectedLocation {
-                    locationManager.region.center = newLocation // Center map on new location
+                    locationManager.region.center = newLocation
                 }
             }
             .gesture(
@@ -247,33 +258,33 @@ struct MapView: View {
                     .onEnded { _ in
                         let center = locationManager.region.center
                         selectedLocation = center
-                        selectedImageData = nil // Reset image data
-                        showAlert = true // Show alert when location is selected
+                        selectedImageData = nil
+                        showAlert = true
                     }
             )
             .alert("Star the Location?", isPresented: $showAlert) {
-                TextField("Enter a tag", text: $tag) // Input for tag
-                TextField("Enter a description", text: $description) // Input for description
+                TextField("Enter a tag", text: $tag)
+                TextField("Enter a description", text: $description)
                 Button("Star") {
                     if let location = selectedLocation {
                         appModel.starLocation(
                             latitude: location.latitude,
                             longitude: location.longitude,
                             tag: tag,
-                            description: description, // Pass the description
-                            imageData: selectedImageData // Pass the image data
+                            description: description,
+                            imageData: selectedImageData
                         )
                     }
                 }
                 Button(selectedImageData == nil ? "Share Image" : "Image Selected") {
-                    showImagePicker = true // Show image picker
+                    showImagePicker = true
                 }
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("Enter a tag and description for this location. Do you want to share an image of the location?")
             }
             .sheet(isPresented: $showImagePicker, onDismiss: {
-                showAlert = true // Reopen the alert after image picker is dismissed
+                showAlert = true
             }) {
                 PhotosPicker(selection: $selectedImage, matching: .images) {
                     Text("Select an Image")
@@ -282,8 +293,8 @@ struct MapView: View {
                     if let newItem = newItem {
                         Task {
                             if let data = try? await newItem.loadTransferable(type: Data.self) {
-                                selectedImageData = data // Store the image data
-                                showImagePicker = false // Close the image picker
+                                selectedImageData = data
+                                showImagePicker = false
                             }
                         }
                     }
@@ -455,6 +466,7 @@ func shareStarredList(appModel: AppModel) {
         let locationInfo = """
         Tag: \(location.tag)
         Note: \(location.description ?? "No description")
+        Address: \(location.address)
         Coordinates: Lat \(location.latitude), Lon \(location.longitude)
         """
         
@@ -470,6 +482,97 @@ func shareStarredList(appModel: AppModel) {
     if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
        let rootViewController = windowScene.windows.first?.rootViewController {
         rootViewController.present(activityController, animated: true, completion: nil)
+    }
+}
+
+struct GoogleSignInResult {
+    let idToken: String
+    let accessToken: String
+    let email: String?
+    let firstName: String?
+    let lastName: String?
+    let fullName: String?
+    let profileImageUrl: URL?
+    
+    var displayName: String? {
+        fullName ?? firstName ?? lastName
+    }
+    
+    init?(result: GIDSignInResult) {
+        guard let idToken = result.user.idToken?.tokenString else {
+            return nil
+        }
+
+        self.idToken = idToken
+        self.accessToken = result.user.accessToken.tokenString
+        self.email = result.user.profile?.email
+        self.firstName = result.user.profile?.givenName
+        self.lastName = result.user.profile?.familyName
+        self.fullName = result.user.profile?.name
+        
+        let dimension = round(400 * UIScreen.main.scale)
+        
+        if result.user.profile?.hasImage == true {
+            self.profileImageUrl = result.user.profile?.imageURL(withDimension: UInt(dimension))
+        } else {
+            self.profileImageUrl = nil
+        }
+    }
+}
+
+final class SignInWithGoogleHelper {
+    
+    init(GIDClientID: String) {
+        let config = GIDConfiguration(clientID: GIDClientID)
+        GIDSignIn.sharedInstance.configuration = config
+    }
+        
+    @MainActor
+    func signIn(viewController: UIViewController? = nil) async throws -> GoogleSignInResult {
+        guard let topViewController = viewController ?? UIApplication.topViewController() else {
+            throw GoogleSignInError.noViewController
+        }
+                
+        let gidSignInResult = try await GIDSignIn.sharedInstance.signIn(withPresenting: topViewController)
+        
+        guard let result = GoogleSignInResult(result: gidSignInResult) else {
+            throw GoogleSignInError.badResponse
+        }
+        
+        return result
+    }
+    
+    private enum GoogleSignInError: LocalizedError {
+        case noViewController
+        case badResponse
+        
+        var errorDescription: String? {
+            switch self {
+            case .noViewController:
+                return "Could not find top view controller."
+            case .badResponse:
+                return "Google Sign In had a bad response."
+            }
+        }
+    }
+}
+
+extension UIApplication {
+    static func topViewController(base: UIViewController? = UIApplication.shared.connectedScenes
+                                    .filter { $0.activationState == .foregroundActive }
+                                    .compactMap { $0 as? UIWindowScene }
+                                    .first?.windows
+                                    .filter { $0.isKeyWindow }.first?.rootViewController) -> UIViewController? {
+        if let nav = base as? UINavigationController {
+            return topViewController(base: nav.visibleViewController)
+        }
+        if let tab = base as? UITabBarController, let selected = tab.selectedViewController {
+            return topViewController(base: selected)
+        }
+        if let presented = base?.presentedViewController {
+            return topViewController(base: presented)
+        }
+        return base
     }
 }
 
