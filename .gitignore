@@ -7,7 +7,7 @@ xcuserdata/
 
 ## Obj-C/Swift specific
 *.hmap
-
+WEEK10/communityMaps/GoogleService-Info.plist
 ## App packaging
 *.ipa
 *.dSYM.zip
