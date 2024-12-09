@@ -6,6 +6,12 @@ import GoogleSignIn
 import GoogleSignInSwift
 import UIKit
 
+extension CLLocationCoordinate2D: Equatable {
+    public static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {
+        return lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
+    }
+}
+
 struct MainView: View {
     @StateObject private var appModel = AppModel() // Initialize the app model
     @State private var showAddEventView = false // State to control navigation
@@ -277,6 +283,7 @@ struct MapView: View {
     @State private var selectedImage: PhotosPickerItem?
     @State private var showImagePicker = false
     @State private var selectedImageData: Data?
+    @State private var initialRegion: MKCoordinateRegion?
 
     var body: some View {
         ZStack {
@@ -291,7 +298,13 @@ struct MapView: View {
                 }
             }
             .onAppear {
-                if let newLocation = selectedLocation {
+                if initialRegion == nil {
+                    locationManager.centerUserLocation()
+                    initialRegion = locationManager.region
+                }
+            }
+            .onChange(of: selectedLocation) { newLocation in
+                if let newLocation = newLocation {
                     locationManager.region.center = newLocation
                 }
             }

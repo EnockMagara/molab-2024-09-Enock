@@ -25,7 +25,7 @@ class AppModel: ObservableObject {
     private let db = Firestore.firestore()
     
     @Published var mapRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+        center: CLLocationCoordinate2D(latitude: 40.6931, longitude: -73.9856),
         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
     )
     
