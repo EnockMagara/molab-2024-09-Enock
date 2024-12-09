@@ -67,7 +67,7 @@ class AppModel: ObservableObject {
                     tag: tag,
                     address: address,
                     description: description,
-                    imageData: imageData
+                    imageURL: nil // Do not store image data
                 )
             } ?? []
         }
@@ -140,7 +140,7 @@ class AppModel: ObservableObject {
                             tag: tag,
                             address: addressString,
                             description: description,
-                            imageData: nil // Do not store image data
+                            imageURL: nil // Do not store image data
                         )
                         self.saveStarredLocation(location: newStarredLocation, imageURL: url)
                     case .failure(let error):
@@ -155,7 +155,7 @@ class AppModel: ObservableObject {
                     tag: tag,
                     address: addressString,
                     description: description,
-                    imageData: nil
+                    imageURL: nil
                 )
                 self.saveStarredLocation(location: newStarredLocation, imageURL: nil)
             }
@@ -303,6 +303,6 @@ struct StarredLocation: Identifiable {
     let tag: String
     let address: String
     let description: String?
-    let imageData: Data?
+    let imageURL: String?
 }
 

@@ -224,8 +224,22 @@ struct StarredListView: View {
                     
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Image(systemName: "star.fill")
-                                .foregroundColor(.orange)
+                            if let imageURL = location.imageURL {
+                                AsyncImage(url: URL(string: imageURL)) { image in
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 50, height: 50)
+                                        .clipShape(Circle())
+                                        .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                                        .shadow(radius: 4)
+                                } placeholder: {
+                                    ProgressView()
+                                }
+                            } else {
+                                Image(systemName: "star.fill")
+                                    .foregroundColor(.orange)
+                            }
                             Text("Tag: \(location.tag)")
                                 .font(.headline)
                                 .foregroundColor(.primary)
@@ -293,7 +307,7 @@ func shareStarredList(appModel: AppModel, selectedLocations: Set<UUID>) {
         
         itemsToShare.append(locationInfo)
         
-        if let imageData = location.imageData, let image = UIImage(data: imageData) {
+        if let imageURL = location.imageURL, let url = URL(string: imageURL), let data = try? Data(contentsOf: url), let image = UIImage(data: data) {
             itemsToShare.append(image)
         }
     }
@@ -319,16 +333,33 @@ struct MapView: View {
     @State private var showImagePicker = false
     @State private var selectedImageData: Data?
     @State private var initialRegion: MKCoordinateRegion?
+    @State private var selectedStarredLocation: StarredLocation?
+    @State private var showImageModal = false
 
     var body: some View {
         ZStack {
             Map(coordinateRegion: $locationManager.region, annotationItems: appModel.starredLocations) { location in
                 MapAnnotation(coordinate: CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)) {
                     Button(action: {
-                        // Show modal with image
+                        selectedStarredLocation = location
+                        showImageModal = true
                     }) {
-                        Image(systemName: "star.fill")
-                            .foregroundColor(.yellow)
+                        if let imageURL = location.imageURL {
+                            AsyncImage(url: URL(string: imageURL)) { image in
+                                image
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 50, height: 50)
+                                    .clipShape(Circle())
+                                    .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                                    .shadow(radius: 4)
+                            } placeholder: {
+                                ProgressView()
+                            }
+                        } else {
+                            Image(systemName: "star.fill")
+                                .foregroundColor(.yellow)
+                        }
                     }
                 }
             }
@@ -417,6 +448,19 @@ struct MapView: View {
                     }
                     .padding(.trailing)
                 }
+            }
+        }
+        .sheet(item: $selectedStarredLocation) { location in
+            if let imageURL = location.imageURL {
+                AsyncImage(url: URL(string: imageURL)) { image in
+                    image
+                        .resizable()
+                        .scaledToFit()
+                } placeholder: {
+                    ProgressView()
+                }
+            } else {
+                Text("No image available")
             }
         }
     }
