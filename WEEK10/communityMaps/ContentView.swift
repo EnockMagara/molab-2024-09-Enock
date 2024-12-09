@@ -382,9 +382,17 @@ struct MapView: View {
                 }
             }
 
-            // Add the star button
+
             VStack {
+                Text("Tap on the map to star a location")
+                    .font(.headline)
+                    .padding()
+                    .background(Color.white.opacity(0.7))
+                    .cornerRadius(10)
+                    .padding(.top, 10)
+                
                 Spacer()
+                
                 HStack {
                     Spacer()
                     Button(action: {

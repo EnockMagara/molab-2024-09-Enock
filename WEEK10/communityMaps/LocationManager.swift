@@ -17,23 +17,23 @@ class LocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.requestWhenInUseAuthorization()
         locationManager.startUpdatingLocation()
-        print("LocationManager initialized")
+
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-        print("Received location update: \(location.coordinate)")
+
         
         // Check if the new location is significantly different from the last location
         if let lastLocation = lastLocation {
             let distance = location.distance(from: lastLocation)
             if distance > 50 { // Adjust the distance threshold as needed
                 region.center = location.coordinate
-                print("Map region updated to: \(region.center)")
+
             }
         } else {
             region.center = location.coordinate
-            print("Map region updated to: \(region.center)")
+
         }
         
         lastLocation = location

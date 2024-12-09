@@ -79,26 +79,26 @@ class AppModel: ObservableObject {
         let storageRef = storage.reference()
         let imageRef = storageRef.child("images/\(UUID().uuidString).\(format)")
         
-        print("Starting image upload...") // Log start of upload
+        print("Starting image upload...")
 
         imageRef.putData(imageData, metadata: nil) { metadata, error in
             if let error = error {
-                print("Upload error: \(error.localizedDescription)") // Log upload error
+                print("Upload error: \(error.localizedDescription)")
                 completion(.failure(error))
                 return
             }
-            
-            print("Image uploaded successfully. Fetching download URL...") // Log successful upload
+
+            print("Image uploaded successfully. Fetching download URL...")
 
             imageRef.downloadURL { url, error in
                 if let error = error {
-                    print("URL error: \(error.localizedDescription)") // Log URL error
+                    print("URL error: \(error.localizedDescription)")
                     completion(.failure(error))
                     return
                 }
-                
+
                 if let url = url {
-                    print("Image URL: \(url.absoluteString)") // Log the URL
+                    print("Image URL: \(url.absoluteString)")
                     completion(.success(url.absoluteString))
                 }
             }
@@ -128,32 +128,53 @@ class AppModel: ObservableObject {
             guard let self = self else { return }
             
             let addressString = address ?? "Unknown Address"
-            let newStarredLocation = StarredLocation(
-                id: UUID(),
-                latitude: latitude,
-                longitude: longitude,
-                tag: tag,
-                address: addressString,
-                description: description,
-                imageData: imageData
-            )
-            self.starredLocations.append(newStarredLocation)
             
-            // Save to Firestore
-            self.saveStarredLocation(location: newStarredLocation)
+            if let imageData = imageData {
+                self.uploadImageToStorage(imageData: imageData, format: "jpg") { result in
+                    switch result {
+                    case .success(let url):
+                        let newStarredLocation = StarredLocation(
+                            id: UUID(),
+                            latitude: latitude,
+                            longitude: longitude,
+                            tag: tag,
+                            address: addressString,
+                            description: description,
+                            imageData: nil // Do not store image data
+                        )
+                        self.saveStarredLocation(location: newStarredLocation, imageURL: url)
+                    case .failure(let error):
+                        print("Error uploading image: \(error.localizedDescription)")
+                    }
+                }
+            } else {
+                let newStarredLocation = StarredLocation(
+                    id: UUID(),
+                    latitude: latitude,
+                    longitude: longitude,
+                    tag: tag,
+                    address: addressString,
+                    description: description,
+                    imageData: nil
+                )
+                self.saveStarredLocation(location: newStarredLocation, imageURL: nil)
+            }
         }
     }
 
     // Function to save a starred location to Firestore
-    private func saveStarredLocation(location: StarredLocation) {
-        let locationData: [String: Any] = [
+    private func saveStarredLocation(location: StarredLocation, imageURL: String?) {
+        var locationData: [String: Any] = [
             "latitude": location.latitude,
             "longitude": location.longitude,
             "tag": location.tag,
             "address": location.address,
-            "description": location.description ?? "",
-            "imageData": location.imageData ?? Data()
+            "description": location.description ?? ""
         ]
+        
+        if let imageURL = imageURL {
+            locationData["imageURL"] = imageURL
+        }
         
         db.collection("starredLocations").addDocument(data: locationData) { error in
             if let error = error {
@@ -201,42 +222,61 @@ class AppModel: ObservableObject {
 
     // Function to handle image upload
     func handleImageUpload(imageData: Data) {
-        if let image = UIImage(data: imageData) {
-            let format: String
-            if let cgImage = image.cgImage {
-                switch cgImage.alphaInfo {
-                case .none, .noneSkipLast, .noneSkipFirst:
-                    format = "jpg"
-                default:
-                    format = "png"
-                }
-            } else {
-                format = "jpg" // Default to jpg if format is unknown
-            }
-            
-            uploadImageToStorage(imageData: imageData, format: format) { result in
-                switch result {
-                case .success(let url):
-                    print("Image URL saved successfully: \(url)")
-                    // Save URL to Firestore
-                    saveImageURLToFirestore(url: url) { result in
-                        switch result {
-                        case .success:
-                            print("Image URL stored in Firestore.")
-                        case .failure(let error):
-                            print("Error saving image URL to Firestore: \(error.localizedDescription)")
-                        }
+        let format = determineImageFormat(imageData: imageData)
+
+        uploadImageToStorage(imageData: imageData, format: format) { result in
+            switch result {
+            case .success(let url):
+                self.saveImageURLToFirestore(url: url) { result in
+                    switch result {
+                    case .success:
+                        print("Image URL stored in Firestore.")
+                    case .failure(let error):
+                        print("Error saving image URL to Firestore: \(error.localizedDescription)")
                     }
-                case .failure(let error):
-                    print("Error uploading image: \(error.localizedDescription)")
                 }
+            case .failure(let error):
+                print("Error uploading image: \(error.localizedDescription)")
+            }
+        }
+    }
+
+    // Helper function to determine image format
+    private func determineImageFormat(imageData: Data) -> String {
+        if let image = UIImage(data: imageData), let cgImage = image.cgImage {
+            switch cgImage.alphaInfo {
+            case .none, .noneSkipLast, .noneSkipFirst:
+                return "jpg"
+            default:
+                return "png"
+            }
+        }
+        return "jpg"
+    }
+
+    // Function to save image URL to Firestore
+    func saveImageURLToFirestore(url: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        let documentData: [String: Any] = [
+            "imageURL": url,
+            "timestamp": Timestamp(date: Date())
+        ]
+
+        print("Saving image URL to Firestore...")
+
+        db.collection("images").addDocument(data: documentData) { error in
+            if let error = error {
+                print("Error saving image URL to Firestore: \(error.localizedDescription)")
+                completion(.failure(error))
+            } else {
+                print("Image URL stored in Firestore successfully.")
+                completion(.success(()))
             }
         }
     }
 }
 
 
-// Example Location struct
+
 struct Location: Codable, Equatable, Identifiable {
     let id: UUID
     var name: String
@@ -246,7 +286,7 @@ struct Location: Codable, Equatable, Identifiable {
     var imageData: Data?
 }
 
-// Example Event struct
+
 struct Event: Identifiable {
     let id = UUID() // Unique identifier
     let name: String // Name of the event
@@ -264,25 +304,5 @@ struct StarredLocation: Identifiable {
     let address: String
     let description: String?
     let imageData: Data?
-}
-
-func saveImageURLToFirestore(url: String, completion: @escaping (Result<Void, Error>) -> Void) {
-    let db = Firestore.firestore()
-    let documentData: [String: Any] = [
-        "imageURL": url,
-        "timestamp": Timestamp(date: Date())
-    ]
-
-    print("Saving image URL to Firestore...") // Log start of Firestore save
-
-    db.collection("images").addDocument(data: documentData) { error in
-        if let error = error {
-            print("Error saving image URL to Firestore: \(error.localizedDescription)") // Log Firestore error
-            completion(.failure(error))
-        } else {
-            print("Image URL stored in Firestore successfully.") // Log successful save
-            completion(.success(()))
-        }
-    }
 }
 
