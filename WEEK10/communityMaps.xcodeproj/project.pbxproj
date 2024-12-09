@@ -20,7 +20,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		8A0D5F152D03E6480033E6E6 /* Exceptions for "communityMaps" folder in "communityMaps" target */ = {
+		8A0D5F4E2D04AF5D0033E6E6 /* Exceptions for "communityMaps" folder in "communityMaps" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -33,7 +33,7 @@
 		8A0C98AE2CE6FBA20094CACF /* communityMaps */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				8A0D5F152D03E6480033E6E6 /* Exceptions for "communityMaps" folder in "communityMaps" target */,
+				8A0D5F4E2D04AF5D0033E6E6 /* Exceptions for "communityMaps" folder in "communityMaps" target */,
 			);
 			path = communityMaps;
 			sourceTree = "<group>";

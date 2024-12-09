@@ -15,64 +15,68 @@ struct MainView: View {
     @State private var showImagePicker = false // State to control image picker
     @State private var selectedImageData: Data? // State for the selected image data
     @State private var selectedTab = 0
-    var body: some View {
-        TabView(selection: $selectedTab) {
-            NavigationView {
-                MapView(selectedLocation: $selectedLocation, navigateToMap: $navigateToMap) // Pass bindings
-                    .navigationTitle("Maps") // Set the title for this tab
-            }
-            .tabItem {
-                Image(systemName: "map")
-                Text("Maps")
-            }
-            .tag(0)
-            
-            NavigationView {
-                ProfileView()
-                    .navigationTitle("Profile") // Set the title for this tab
-            }
-            .tabItem {
-                Image(systemName: "person")
-                Text("Profile")
-            }
-            .tag(1)
-            
-            NavigationView {
-                StarredListView(selectedTab: $selectedTab, selectedLocation: $selectedLocation)
-                    .navigationTitle("Starred") // Set the title for this tab
-                    .navigationBarItems(trailing: Button(action: {
-                        shareStarredList(appModel: appModel) // Share starred events
-                    }) {
-                        Text("Share Starred")
-                    })
-            }
-            .tabItem {
-                Image(systemName: "star")
-                Text("Starred")
-            }
-            .tag(2) // Update tag to 2
-        }
-        .environmentObject(appModel) // Provide the app model to subviews
-        .frame(maxHeight: .infinity) // Allow TabView to take available space
+    @State private var isSignedIn = false // Track sign-in status
+    @State private var googleSignInResult: GoogleSignInResult? // Manage Google Sign-In result
 
-        .sheet(isPresented: $showAddEventView) {
-            AddEventView()
-                .environmentObject(appModel) // Inject appModel into AddEventView
+    var body: some View {
+        if isSignedIn {
+            TabView(selection: $selectedTab) {
+                NavigationView {
+                    MapView(selectedLocation: $selectedLocation, navigateToMap: $navigateToMap) // Pass bindings
+                        .navigationTitle("Maps") // Set the title for this tab
+                }
+                .tabItem {
+                    Image(systemName: "map")
+                    Text("Maps")
+                }
+                .tag(0)
+                
+                NavigationView {
+                    ProfileView(isSignedIn: $isSignedIn, googleSignInResult: $googleSignInResult) // Pass binding
+                        .navigationTitle("Profile") // Set the title for this tab
+                }
+                .tabItem {
+                    Image(systemName: "person")
+                    Text("Profile")
+                }
+                .tag(1)
+                
+                NavigationView {
+                    StarredListView(selectedTab: $selectedTab, selectedLocation: $selectedLocation)
+                        .navigationTitle("Starred") // Set the title for this tab
+                        .navigationBarItems(trailing: Button(action: {
+                            shareStarredList(appModel: appModel) // Share starred events
+                        }) {
+                            Text("Share Starred")
+                        })
+                }
+                .tabItem {
+                    Image(systemName: "star")
+                    Text("Starred")
+                }
+                .tag(2) // Update tag to 2
+            }
+            .environmentObject(appModel) // Provide the app model to subviews
+            .frame(maxHeight: .infinity) // Allow TabView to take available space
+
+            .sheet(isPresented: $showAddEventView) {
+                AddEventView()
+                    .environmentObject(appModel) // Inject appModel into AddEventView
+            }
+        } else {
+            WelcomeView(isSignedIn: $isSignedIn, googleSignInResult: $googleSignInResult) // Pass binding
         }
     }
 }
 
 // Placeholder views for Profile, Events, and Starred List
 struct ProfileView: View {
-    @State private var isEditing = false // State to control edit mode
-    @State private var username = "John Doe" // Example username
-    @State private var bio = "Loves hiking and photography." // Example bio
-    @State private var googleSignInResult: GoogleSignInResult? // Store Google Sign-In result
-    @State private var showSignInError = false // State to show sign-in error
+    @Binding var isSignedIn: Bool // Binding to track sign-in status
+    @Binding var googleSignInResult: GoogleSignInResult?
+    @State private var showSignInError = false
 
     var body: some View {
         VStack {
-            // Profile Information
             VStack(alignment: .leading, spacing: 10) {
                 if let result = googleSignInResult {
                     Text("Username: \(result.displayName ?? "Unknown")")
@@ -81,21 +85,23 @@ struct ProfileView: View {
                         .font(.subheadline)
                         .foregroundColor(.gray)
                 } else {
-                    Text("Username: \(username)")
+                    Text("Not signed in")
                         .font(.headline)
-                    Text("Bio: \(bio)")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
                 }
             }
             .padding()
 
-            // Google Sign-In Button
             Button(action: {
                 Task {
                     do {
-                        let helper = SignInWithGoogleHelper(GIDClientID: "230807118556-seejp6ota1q96kmmf9fi8qq6il6n1492.apps.googleusercontent.com")
-                        googleSignInResult = try await helper.signIn()
+                        if googleSignInResult == nil {
+                            let helper = SignInWithGoogleHelper(GIDClientID: "230807118556-seejp6ota1q96kmmf9fi8qq6il6n1492.apps.googleusercontent.com")
+                            googleSignInResult = try await helper.signIn()
+                        } else {
+                            GIDSignIn.sharedInstance.signOut()
+                            googleSignInResult = nil
+                            isSignedIn = false // Update sign-in status
+                        }
                     } catch {
                         showSignInError = true
                     }
@@ -142,7 +148,7 @@ struct EditProfileView: View {
 
 struct ProfileView_Previews: PreviewProvider {
     static var previews: some View {
-        ProfileView()
+        ProfileView(isSignedIn: .constant(false), googleSignInResult: .constant(nil))
     }
 }
 
@@ -573,6 +579,38 @@ extension UIApplication {
             return topViewController(base: presented)
         }
         return base
+    }
+}
+
+struct WelcomeView: View {
+    @Binding var isSignedIn: Bool
+    @Binding var googleSignInResult: GoogleSignInResult? // Use binding
+    @State private var showSignInError = false
+
+    var body: some View {
+        VStack {
+            Text("Welcome to MapJournal")
+                .font(.largeTitle)
+                .padding()
+
+            GoogleSignInButton {
+                Task {
+                    do {
+                        let helper = SignInWithGoogleHelper(GIDClientID: "230807118556-seejp6ota1q96kmmf9fi8qq6il6n1492.apps.googleusercontent.com")
+                        googleSignInResult = try await helper.signIn()
+                        isSignedIn = true
+                    } catch {
+                        showSignInError = true
+                    }
+                }
+            }
+            .frame(width: 200, height: 50)
+            .alert("Sign-In Error", isPresented: $showSignInError) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text("Failed to sign in with Google.")
+            }
+        }
     }
 }
 
