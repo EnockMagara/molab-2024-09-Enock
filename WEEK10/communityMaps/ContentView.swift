@@ -32,16 +32,6 @@ struct MainView: View {
                 .tag(0)
                 
                 NavigationView {
-                    ProfileView(isSignedIn: $isSignedIn, googleSignInResult: $googleSignInResult) // Pass binding
-                        .navigationTitle("Profile") // Set the title for this tab
-                }
-                .tabItem {
-                    Image(systemName: "person")
-                    Text("Profile")
-                }
-                .tag(1)
-                
-                NavigationView {
                     StarredListView(selectedTab: $selectedTab, selectedLocation: $selectedLocation)
                         .navigationTitle("Starred") // Set the title for this tab
                         .navigationBarItems(trailing: Button(action: {
@@ -53,6 +43,16 @@ struct MainView: View {
                 .tabItem {
                     Image(systemName: "star")
                     Text("Starred")
+                }
+                .tag(1) // Update tag to 1
+                
+                NavigationView {
+                    ProfileView(isSignedIn: $isSignedIn, googleSignInResult: $googleSignInResult) // Pass binding
+                        .navigationTitle("Profile") // Set the title for this tab
+                }
+                .tabItem {
+                    Image(systemName: "person")
+                    Text("Profile")
                 }
                 .tag(2) // Update tag to 2
             }
@@ -80,8 +80,13 @@ struct ProfileView: View {
             // Profile information card
             VStack(alignment: .leading, spacing: 10) {
                 if let result = googleSignInResult {
-                    Text("Username: \(result.displayName ?? "Unknown")")
-                        .font(.headline)
+                    HStack {
+                        Image(systemName: "person.circle.fill")
+                            .foregroundColor(.blue)
+                            .font(.title)
+                        Text("Username: \(result.displayName ?? "Unknown")")
+                            .font(.headline)
+                    }
                     Text("Email: \(result.email ?? "No email")")
                         .font(.subheadline)
                         .foregroundColor(.gray)
@@ -190,26 +195,30 @@ private let dateFormatter: DateFormatter = {
 
 struct StarredListView: View {
     @EnvironmentObject var appModel: AppModel
-    @Binding var selectedTab: Int // Binding to change the tab
-    @Binding var selectedLocation: CLLocationCoordinate2D? // Binding for selected location
-    @State private var navigateToMap = false // State to control navigation
+    @Binding var selectedTab: Int
+    @Binding var selectedLocation: CLLocationCoordinate2D?
+    @State private var navigateToMap = false
 
     var body: some View {
         List(appModel.starredLocations, id: \.id) { location in
             VStack(alignment: .leading, spacing: 10) {
-                Text("Tag: \(location.tag)") // Display tag
-                Text("Address: \(location.address)") // Display address separately
-                Text("Description: \(location.description ?? "No description")") // Display description
-                Text("Lat: \(location.latitude), Lon: \(location.longitude)") // Display coordinates
-                
-                if let imageData = location.imageData, let uiImage = UIImage(data: imageData) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 100)
-                        .padding(.vertical, 5)
+                HStack {
+                    Image(systemName: "star.fill")
+                        .foregroundColor(.orange)
+                    Text("Tag: \(location.tag)")
+                        .font(.headline)
+                        .foregroundColor(.primary)
                 }
-                
+                Text("Address: \(location.address)")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Text("Description: \(location.description ?? "No description")")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Text("Lat: \(location.latitude), Lon: \(location.longitude)")
+                    .font(.footnote)
+                    .foregroundColor(.gray)
+
                 HStack {
                     Spacer()
                     Button(action: {
@@ -217,14 +226,34 @@ struct StarredListView: View {
                         selectedTab = 0
                         navigateToMap = true
                     }) {
-                        Image(systemName: "arrow.right.circle")
+                        Image(systemName: "arrow.right.circle.fill")
                             .foregroundColor(.blue)
+                            .font(.title2)
                     }
                 }
             }
             .padding()
+            .background(RoundedRectangle(cornerRadius: 10).fill(Color(UIColor.systemBackground)))
+            .shadow(color: .gray.opacity(0.5), radius: 4, x: 0, y: 2)
+            .padding(.vertical, 5)
         }
         .navigationTitle("Starred Locations")
+        .navigationBarItems(trailing: Button(action: {
+            shareStarredList(appModel: appModel)
+        }) {
+            HStack {
+                Image(systemName: "square.and.arrow.up")
+                Text("Share")
+            }
+            .padding(.vertical, 4)
+            .padding(.horizontal, 10)
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(8)
+            .shadow(color: .gray.opacity(0.5), radius: 2, x: 0, y: 2)
+        })
+        .padding(.top, 20)
+        .background(Color(UIColor.systemGroupedBackground))
         .background(
             NavigationLink(
                 destination: MapView(selectedLocation: $selectedLocation, navigateToMap: $navigateToMap),
@@ -276,8 +305,11 @@ struct MapView: View {
                     }
             )
             .alert("Star the Location?", isPresented: $showAlert) {
-                TextField("Enter a tag", text: $tag)
-                TextField("Enter a description", text: $description)
+                TextField("Enter a tag, e.g., Great place to eat shawarma", text: $tag)
+                TextField("Enter a description, e.g., Best shawarma in town!", text: $description)
+                Button("Select Image (Optional)") {
+                    showImagePicker = true
+                }
                 Button("Star") {
                     if let location = selectedLocation {
                         appModel.starLocation(
@@ -289,12 +321,9 @@ struct MapView: View {
                         )
                     }
                 }
-                Button(selectedImageData == nil ? "Share Image" : "Image Selected") {
-                    showImagePicker = true
-                }
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("Enter a tag and description for this location. Do you want to share an image of the location?")
+                Text("Enter a tag and description for this location. Optionally, you can share an image of the location.")
             }
             .sheet(isPresented: $showImagePicker, onDismiss: {
                 showAlert = true
