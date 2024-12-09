@@ -40,11 +40,6 @@ struct MainView: View {
                 NavigationView {
                     StarredListView(selectedTab: $selectedTab, selectedLocation: $selectedLocation)
                         .navigationTitle("Starred") // Set the title for this tab
-                        .navigationBarItems(trailing: Button(action: {
-                            shareStarredList(appModel: appModel) // Share starred events
-                        }) {
-                            Text("Share Starred")
-                        })
                 }
                 .tabItem {
                     Image(systemName: "star")
@@ -204,38 +199,43 @@ struct StarredListView: View {
     @Binding var selectedTab: Int
     @Binding var selectedLocation: CLLocationCoordinate2D?
     @State private var navigateToMap = false
+    @State private var selectedLocations: Set<UUID> = [] // Track selected locations
 
     var body: some View {
         List(appModel.starredLocations, id: \.id) { location in
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Image(systemName: "star.fill")
-                        .foregroundColor(.orange)
-                    Text("Tag: \(location.tag)")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                }
-                Text("Address: \(location.address)")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                Text("Description: \(location.description ?? "No description")")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                Text("Lat: \(location.latitude), Lon: \(location.longitude)")
-                    .font(.footnote)
-                    .foregroundColor(.gray)
-
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        selectedLocation = CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
-                        selectedTab = 0
-                        navigateToMap = true
-                    }) {
-                        Image(systemName: "arrow.right.circle.fill")
-                            .foregroundColor(.blue)
-                            .font(.title2)
+            HStack {
+                Image(systemName: selectedLocations.contains(location.id) ? "checkmark.square" : "square")
+                    .foregroundColor(selectedLocations.contains(location.id) ? .blue : .gray)
+                    .onTapGesture {
+                        if selectedLocations.contains(location.id) {
+                            selectedLocations.remove(location.id)
+                        } else {
+                            selectedLocations.insert(location.id)
+                        }
                     }
+                
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Image(systemName: "star.fill")
+                            .foregroundColor(.orange)
+                        Text("Tag: \(location.tag)")
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                    }
+                    Text("Address: \(location.address)")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Text("Description: \(location.description ?? "No description")")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                    Text("Lat: \(location.latitude), Lon: \(location.longitude)")
+                        .font(.footnote)
+                        .foregroundColor(.gray)
+                }
+                .onTapGesture {
+                    selectedLocation = CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
+                    selectedTab = 0
+                    navigateToMap = true
                 }
             }
             .padding()
@@ -245,7 +245,7 @@ struct StarredListView: View {
         }
         .navigationTitle("Starred Locations")
         .navigationBarItems(trailing: Button(action: {
-            shareStarredList(appModel: appModel)
+            shareStarredList(appModel: appModel, selectedLocations: selectedLocations)
         }) {
             HStack {
                 Image(systemName: "square.and.arrow.up")
@@ -268,6 +268,32 @@ struct StarredListView: View {
                 EmptyView()
             }
         )
+    }
+}
+
+func shareStarredList(appModel: AppModel, selectedLocations: Set<UUID>) {
+    var itemsToShare: [Any] = []
+    
+    for location in appModel.starredLocations where selectedLocations.contains(location.id) {
+        let locationInfo = """
+        Tag: \(location.tag)
+        Note: \(location.description ?? "No description")
+        Address: \(location.address)
+        Coordinates: Lat \(location.latitude), Lon \(location.longitude)
+        """
+        
+        itemsToShare.append(locationInfo)
+        
+        if let imageData = location.imageData, let image = UIImage(data: imageData) {
+            itemsToShare.append(image)
+        }
+    }
+    
+    let activityController = UIActivityViewController(activityItems: itemsToShare, applicationActivities: nil)
+    
+    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+       let rootViewController = windowScene.windows.first?.rootViewController {
+        rootViewController.present(activityController, animated: true, completion: nil)
     }
 }
 
@@ -531,32 +557,6 @@ struct AddEventView_Previews: PreviewProvider {
     static var previews: some View {
         AddEventView()
             .environmentObject(AppModel()) // Inject appModel for preview
-    }
-}
-
-func shareStarredList(appModel: AppModel) {
-    var itemsToShare: [Any] = []
-    
-    for location in appModel.starredLocations {
-        let locationInfo = """
-        Tag: \(location.tag)
-        Note: \(location.description ?? "No description")
-        Address: \(location.address)
-        Coordinates: Lat \(location.latitude), Lon \(location.longitude)
-        """
-        
-        itemsToShare.append(locationInfo)
-        
-        if let imageData = location.imageData, let image = UIImage(data: imageData) {
-            itemsToShare.append(image) // Add image to share items
-        }
-    }
-    
-    let activityController = UIActivityViewController(activityItems: itemsToShare, applicationActivities: nil)
-    
-    if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-       let rootViewController = windowScene.windows.first?.rootViewController {
-        rootViewController.present(activityController, animated: true, completion: nil)
     }
 }
 
