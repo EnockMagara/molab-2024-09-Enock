@@ -5,6 +5,7 @@ import MapKit
 import GoogleSignIn
 import GoogleSignInSwift
 import UIKit
+import FirebaseFirestore
 
 extension CLLocationCoordinate2D: Equatable {
     public static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {
@@ -319,8 +320,29 @@ struct StarredListView: View {
 
     private func deleteLocation(_ location: StarredLocation) {
         if let index = appModel.starredLocations.firstIndex(where: { $0.id == location.id }) {
+            // Remove from local list
             appModel.starredLocations.remove(at: index)
             
+            // Remove from Firestore
+            let db = Firestore.firestore()
+            db.collection("starredLocations").whereField("latitude", isEqualTo: location.latitude)
+                .whereField("longitude", isEqualTo: location.longitude)
+                .getDocuments { snapshot, error in
+                    if let error = error {
+                        print("Error finding document: \(error.localizedDescription)")
+                        return
+                    }
+                    
+                    snapshot?.documents.forEach { document in
+                        document.reference.delete { error in
+                            if let error = error {
+                                print("Error deleting document: \(error.localizedDescription)")
+                            } else {
+                                print("Document successfully deleted")
+                            }
+                        }
+                    }
+                }
         }
     }
 }
