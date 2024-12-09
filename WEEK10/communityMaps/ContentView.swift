@@ -240,9 +240,15 @@ struct StarredListView: View {
                                     } placeholder: {
                                         ProgressView()
                                     }
+                                    .onAppear {
+                                        print("Loading image from URL: \(imageURL)") // Debugging output
+                                    }
                                 } else {
                                     Image(systemName: "star.fill")
                                         .foregroundColor(.orange)
+                                        .onAppear {
+                                            print("No image URL for location: \(location.tag)") // Debugging output
+                                        }
                                 }
                                 Text("Tag: \(location.tag)")
                                     .font(.headline)

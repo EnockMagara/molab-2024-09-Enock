@@ -58,7 +58,7 @@ class AppModel: ObservableObject {
                 }
                 
                 let description = data["description"] as? String
-                let imageData = data["imageData"] as? Data
+                let imageURL = data["imageURL"] as? String
                 
                 return StarredLocation(
                     id: UUID(),
@@ -67,7 +67,7 @@ class AppModel: ObservableObject {
                     tag: tag,
                     address: address,
                     description: description,
-                    imageURL: nil // Do not store image data
+                    imageURL: imageURL
                 )
             } ?? []
         }
