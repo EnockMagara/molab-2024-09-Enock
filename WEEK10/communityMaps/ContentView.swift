@@ -200,6 +200,8 @@ struct StarredListView: View {
     @Binding var selectedLocation: CLLocationCoordinate2D?
     @State private var navigateToMap = false
     @State private var selectedLocations: Set<UUID> = [] // Track selected locations
+    @State private var locationToDelete: StarredLocation? // Track location to delete
+    @State private var showDeleteConfirmation = false // Show confirmation alert
 
     var body: some View {
         VStack {
@@ -210,60 +212,63 @@ struct StarredListView: View {
                 .cornerRadius(10)
                 .padding(.top, 0)
 
-            List(appModel.starredLocations, id: \.id) { location in
-                HStack {
-                    Image(systemName: selectedLocations.contains(location.id) ? "checkmark.square" : "square")
-                        .foregroundColor(selectedLocations.contains(location.id) ? .blue : .gray)
-                        .onTapGesture {
-                            if selectedLocations.contains(location.id) {
-                                selectedLocations.remove(location.id)
-                            } else {
-                                selectedLocations.insert(location.id)
-                            }
-                        }
-                    
-                    VStack(alignment: .leading, spacing: 10) {
-                        HStack {
-                            if let imageURL = location.imageURL {
-                                AsyncImage(url: URL(string: imageURL)) { image in
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 50, height: 50)
-                                        .clipShape(Circle())
-                                        .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                                        .shadow(radius: 4)
-                                } placeholder: {
-                                    ProgressView()
+            List {
+                ForEach(appModel.starredLocations, id: \.id) { location in
+                    HStack {
+                        Image(systemName: selectedLocations.contains(location.id) ? "checkmark.square" : "square")
+                            .foregroundColor(selectedLocations.contains(location.id) ? .blue : .gray)
+                            .onTapGesture {
+                                if selectedLocations.contains(location.id) {
+                                    selectedLocations.remove(location.id)
+                                } else {
+                                    selectedLocations.insert(location.id)
                                 }
-                            } else {
-                                Image(systemName: "star.fill")
-                                    .foregroundColor(.orange)
                             }
-                            Text("Tag: \(location.tag)")
-                                .font(.headline)
-                                .foregroundColor(.primary)
+                        
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack {
+                                if let imageURL = location.imageURL {
+                                    AsyncImage(url: URL(string: imageURL)) { image in
+                                        image
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 50, height: 50)
+                                            .clipShape(Circle())
+                                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                                            .shadow(radius: 4)
+                                    } placeholder: {
+                                        ProgressView()
+                                    }
+                                } else {
+                                    Image(systemName: "star.fill")
+                                        .foregroundColor(.orange)
+                                }
+                                Text("Tag: \(location.tag)")
+                                    .font(.headline)
+                                    .foregroundColor(.primary)
+                            }
+                            Text("Address: \(location.address)")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Text("Description: \(location.description ?? "No description")")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Text("Lat: \(location.latitude), Lon: \(location.longitude)")
+                                .font(.footnote)
+                                .foregroundColor(.gray)
                         }
-                        Text("Address: \(location.address)")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Text("Description: \(location.description ?? "No description")")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Text("Lat: \(location.latitude), Lon: \(location.longitude)")
-                            .font(.footnote)
-                            .foregroundColor(.gray)
+                        .onTapGesture {
+                            selectedLocation = CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
+                            selectedTab = 0
+                            navigateToMap = true
+                        }
                     }
-                    .onTapGesture {
-                        selectedLocation = CLLocationCoordinate2D(latitude: location.latitude, longitude: location.longitude)
-                        selectedTab = 0
-                        navigateToMap = true
-                    }
+                    .padding()
+                    .background(RoundedRectangle(cornerRadius: 10).fill(Color(UIColor.systemBackground)))
+                    .shadow(color: .gray.opacity(0.5), radius: 4, x: 0, y: 2)
+                    .padding(.vertical, 5)
                 }
-                .padding()
-                .background(RoundedRectangle(cornerRadius: 10).fill(Color(UIColor.systemBackground)))
-                .shadow(color: .gray.opacity(0.5), radius: 4, x: 0, y: 2)
-                .padding(.vertical, 5)
+                .onDelete(perform: confirmDelete)
             }
         }
         .navigationTitle("Starred Locations")
@@ -291,6 +296,32 @@ struct StarredListView: View {
                 EmptyView()
             }
         )
+        .alert(isPresented: $showDeleteConfirmation) {
+            Alert(
+                title: Text("Delete Location"),
+                message: Text("Are you sure you want to delete this location?"),
+                primaryButton: .destructive(Text("Delete")) {
+                    if let location = locationToDelete {
+                        deleteLocation(location)
+                    }
+                },
+                secondaryButton: .cancel()
+            )
+        }
+    }
+
+    private func confirmDelete(at offsets: IndexSet) {
+        if let index = offsets.first {
+            locationToDelete = appModel.starredLocations[index]
+            showDeleteConfirmation = true
+        }
+    }
+
+    private func deleteLocation(_ location: StarredLocation) {
+        if let index = appModel.starredLocations.firstIndex(where: { $0.id == location.id }) {
+            appModel.starredLocations.remove(at: index)
+            
+        }
     }
 }
 
