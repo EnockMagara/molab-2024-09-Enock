@@ -71,12 +71,13 @@ struct MainView: View {
 
 // Placeholder views for Profile, Events, and Starred List
 struct ProfileView: View {
-    @Binding var isSignedIn: Bool // Binding to track sign-in status
+    @Binding var isSignedIn: Bool
     @Binding var googleSignInResult: GoogleSignInResult?
     @State private var showSignInError = false
 
     var body: some View {
-        VStack {
+        VStack(spacing: 20) {
+            // Profile information card
             VStack(alignment: .leading, spacing: 10) {
                 if let result = googleSignInResult {
                     Text("Username: \(result.displayName ?? "Unknown")")
@@ -90,7 +91,10 @@ struct ProfileView: View {
                 }
             }
             .padding()
+            .background(RoundedRectangle(cornerRadius: 10).fill(Color(UIColor.secondarySystemBackground)))
+            .padding(.horizontal, 20)
 
+            // Sign out button card
             Button(action: {
                 Task {
                     do {
@@ -100,7 +104,7 @@ struct ProfileView: View {
                         } else {
                             GIDSignIn.sharedInstance.signOut()
                             googleSignInResult = nil
-                            isSignedIn = false // Update sign-in status
+                            isSignedIn = false
                         }
                     } catch {
                         showSignInError = true
@@ -109,19 +113,22 @@ struct ProfileView: View {
             }) {
                 Text(googleSignInResult == nil ? "Sign in with Google" : "Sign out")
                     .padding()
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.yellow)
+                    .foregroundColor(.black)
+                    .cornerRadius(10)
+                    .shadow(color: .gray, radius: 5, x: 0, y: 2)
             }
-            .alert("Sign-In Error", isPresented: $showSignInError) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("Failed to sign in with Google.")
-            }
+            .padding(.horizontal, 20)
 
             Spacer()
         }
         .navigationTitle("Profile")
+        .alert("Sign-In Error", isPresented: $showSignInError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Failed to sign in with Google.")
+        }
     }
 }
 
@@ -584,27 +591,52 @@ extension UIApplication {
 
 struct WelcomeView: View {
     @Binding var isSignedIn: Bool
-    @Binding var googleSignInResult: GoogleSignInResult? // Use binding
+    @Binding var googleSignInResult: GoogleSignInResult?
     @State private var showSignInError = false
 
     var body: some View {
-        VStack {
-            Text("Welcome to MapJournal")
-                .font(.largeTitle)
-                .padding()
+        GeometryReader { geometry in
+            VStack(spacing: 20) {
+                Spacer() // Push content down
 
-            GoogleSignInButton {
-                Task {
-                    do {
-                        let helper = SignInWithGoogleHelper(GIDClientID: "230807118556-seejp6ota1q96kmmf9fi8qq6il6n1492.apps.googleusercontent.com")
-                        googleSignInResult = try await helper.signIn()
-                        isSignedIn = true
-                    } catch {
-                        showSignInError = true
+                // Welcome message with large title font
+                Text("Welcome to MapJournal")
+                    .font(.largeTitle)
+                    .fontWeight(.bold) // Make the text bold
+                    .foregroundColor(.primary) // Use primary color for text
+
+                // Description text with body font
+                Text("Discover and save your favorite places. Add locations, share experiences, and explore the world around you.")
+                    .font(.body)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.secondary) // Use secondary color for text
+                    .padding(.horizontal, 30) // Add horizontal padding
+
+                Spacer() // Push content to the top
+
+                // Google Sign-In button
+                GoogleSignInButton {
+                    Task {
+                        do {
+                            let helper = SignInWithGoogleHelper(GIDClientID: "230807118556-seejp6ota1q96kmmf9fi8qq6il6n1492.apps.googleusercontent.com")
+                            googleSignInResult = try await helper.signIn()
+                            isSignedIn = true
+                        } catch {
+                            showSignInError = true
+                        }
                     }
                 }
+                .frame(width: 250, height: 50) // Set button size
+                .background(Color.blue) // Set button background color
+                .foregroundColor(.white) // Set button text color
+                .cornerRadius(10) // Round button corners
+                .padding(.bottom, 50) // Add bottom padding
+
+                Spacer() // Push content to the bottom
             }
-            .frame(width: 200, height: 50)
+            .frame(height: geometry.size.height * 0.75) // Set height to 75% of the screen
+            .background(Color(UIColor.systemBackground)) // Set background color
+            .edgesIgnoringSafeArea(.all) // Extend background to edges
             .alert("Sign-In Error", isPresented: $showSignInError) {
                 Button("OK", role: .cancel) {}
             } message: {
