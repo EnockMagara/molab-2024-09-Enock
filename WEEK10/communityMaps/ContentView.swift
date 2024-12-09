@@ -355,6 +355,26 @@ struct MapView: View {
                     }
                 }
             }
+
+            // Add the star button
+            VStack {
+                Spacer()
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        locationManager.centerUserLocation()
+                    }) {
+                        Image(systemName: "star.fill")
+                            .font(.title)
+                            .foregroundColor(.yellow)
+                            .padding()
+                            .background(Color.white.opacity(0.8))
+                            .clipShape(Circle())
+                            .shadow(radius: 4)
+                    }
+                    .padding(.trailing)
+                }
+            }
         }
     }
 
