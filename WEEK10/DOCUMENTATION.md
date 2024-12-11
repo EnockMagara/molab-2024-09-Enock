@@ -39,13 +39,13 @@ The app follows the MVVM (Model-View-ViewModel) architectural pattern, separatin
 
 ## Development Journey
 
-### Week 9: Project Setup and Planning
+### Week 10: Project Setup and Planning
 - Set up the Xcode project and created the basic structure for the MapJournal app.
 - Defined the app's features, user interface, and data models.
 - Researched and selected the necessary frameworks and libraries, such as SwiftUI, MapKit, CoreLocation, and Firebase.
-- Created a project repository on GitHub to track progress and collaborate with the development team.
+- Created a project repository on GitHub to track progress.
 
-### Week 10: User Interface Development
+### Week 11: User Interface Development
 - Designed and implemented the main views of the app using SwiftUI.
 - Created the Welcome View with a sign-in button and a brief description of the app.
 - Developed the Main View with a tab view containing the Maps, Starred, and Profile tabs.
@@ -64,7 +64,7 @@ The app follows the MVVM (Model-View-ViewModel) architectural pattern, separatin
 - Relevant code:
   - [ContentView.swift](https://github.com/EnockMagara/molab-2024-09-Enock/blob/main/WEEK10/communityMaps/ContentView.swift)
 
-### Week 11: Data Management and Authentication
+### Week 12: Data Management and Authentication
 - Integrated Firebase into the app for data storage and user authentication.
 - Set up Firestore to store starred locations and event data.
 - Implemented the `AppModel` class to manage data operations and updates.
@@ -83,7 +83,7 @@ The app follows the MVVM (Model-View-ViewModel) architectural pattern, separatin
 - Relevant code:
   - [AppModel.swift](https://github.com/EnockMagara/molab-2024-09-Enock/blob/main/WEEK10/communityMaps/AppModel.swift)
 
-### Week 12: Location Services and Sharing
+### Week 13: Location Services and Sharing
 - Implemented location services using CoreLocation to access the user's current location.
 - Developed the `LocationManager` class to handle location updates and region monitoring.
 - Added the ability for users to center the map on their current location.
@@ -101,7 +101,6 @@ The app follows the MVVM (Model-View-ViewModel) architectural pattern, separatin
 - Relevant code:
   - [LocationManager.swift](https://github.com/EnockMagara/molab-2024-09-Enock/blob/main/WEEK10/communityMaps/LocationManager.swift)
 
-Throughout the development process, regular code reviews and testing were conducted to ensure code quality, identify and fix bugs, and maintain a stable app. The app underwent multiple iterations based on user feedback and testing results to refine the user experience and add new features.
 
 The MapJournal app development journey showcases the thought process, challenges, and creative decisions made during each week of development. The app's source code can be found in the [GitHub repository](https://github.com/EnockMagara/molab-2024-09-Enock/tree/main/WEEK10/communityMaps), which reflects the progress and evolution of the app over time.
 
