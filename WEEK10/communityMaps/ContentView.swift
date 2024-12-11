@@ -394,6 +394,7 @@ struct MapView: View {
     @State private var initialRegion: MKCoordinateRegion?
     @State private var selectedStarredLocation: StarredLocation?
     @State private var showImageModal = false
+    @State private var isViewingFromList = false // Track if viewing from list
 
     var body: some View {
         ZStack {
@@ -436,10 +437,12 @@ struct MapView: View {
             .gesture(
                 TapGesture()
                     .onEnded { _ in
-                        let center = locationManager.region.center
-                        selectedLocation = center
-                        selectedImageData = nil
-                        showAlert = true
+                        if !isViewingFromList {
+                            let center = locationManager.region.center
+                            selectedLocation = center
+                            selectedImageData = nil
+                            showAlert = true
+                        }
                     }
             )
             .alert("Star the Location?", isPresented: $showAlert) {
