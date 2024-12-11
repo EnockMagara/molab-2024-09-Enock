@@ -43,7 +43,7 @@ The app follows the MVVM (Model-View-ViewModel) architectural pattern, separatin
 - Set up the Xcode project and created the basic structure for the MapJournal app.
 - Defined the app's features, user interface, and data models.
 - Researched and selected the necessary frameworks and libraries, such as SwiftUI, MapKit, CoreLocation, and Firebase.
-- Created a project repository on GitHub to track progress and collaborate with the development team.
+- Created a project repository on GitHub to track progress.
 
 ### Week 10: User Interface Development
 - Designed and implemented the main views of the app using SwiftUI.
@@ -101,7 +101,6 @@ The app follows the MVVM (Model-View-ViewModel) architectural pattern, separatin
 - Relevant code:
   - [LocationManager.swift](https://github.com/EnockMagara/molab-2024-09-Enock/blob/main/WEEK10/communityMaps/LocationManager.swift)
 
-Throughout the development process, regular code reviews and testing were conducted to ensure code quality, identify and fix bugs, and maintain a stable app. The app underwent multiple iterations based on user feedback and testing results to refine the user experience and add new features.
 
 The MapJournal app development journey showcases the thought process, challenges, and creative decisions made during each week of development. The app's source code can be found in the [GitHub repository](https://github.com/EnockMagara/molab-2024-09-Enock/tree/main/WEEK10/communityMaps), which reflects the progress and evolution of the app over time.
 
